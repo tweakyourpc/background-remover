@@ -49,3 +49,7 @@ python scripts/preflight.py
 ## GPU Support
 
 This project uses CPU `onnxruntime` by default. GPU acceleration is intentionally not part of the default install because setup differs significantly by vendor, driver, CUDA version, and operating system.
+
+## Result Serving
+
+Processed images are written to `outputs/` and served back through `/result/<job_id>` for browser previews and `/download/<job_id>` for attachment downloads. The API does not embed base64 image data in JSON responses.

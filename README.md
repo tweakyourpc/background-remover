@@ -9,7 +9,7 @@ A small local utility for removing image backgrounds and exporting transparent P
 - Local browser UI for before/after previews
 - Alpha matting for softer edges
 - Mask-only export mode
-- Direct PNG downloads
+- Disk-backed previews and direct PNG downloads
 - Recent job metadata through `/api/jobs`
 - Health and identity endpoints for local service checks
 - Cross-platform Python install path for Linux, macOS, and Windows
@@ -73,7 +73,7 @@ See [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md) for platform notes and troubles
 
 Environment variables:
 
-- `HOST`: bind host, defaults to `0.0.0.0`
+- `HOST`: bind host, defaults to `127.0.0.1`
 - `PORT`: bind port, defaults to `5050`
 - `BACKGROUND_REMOVER_MODEL`: rembg model name, defaults to `u2net`
 
@@ -100,7 +100,7 @@ python -m unittest discover -s tests -v
 
 ## Project Status
 
-This is intentionally small: one local web app, local filesystem outputs, and no hosted service dependency. The main platform-sensitive dependency is `onnxruntime`, which must provide a wheel for the target OS and CPU architecture.
+This is intentionally small: one loopback-only local web app by default, local filesystem outputs, and no hosted service dependency. The main platform-sensitive dependency is `onnxruntime`, which must provide a wheel for the target OS and CPU architecture.
 
 ## License
 

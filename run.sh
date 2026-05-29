@@ -10,7 +10,7 @@ if [[ ! -d "$VENV" ]]; then
   exit 1
 fi
 
-HOST="${HOST:-0.0.0.0}"
+HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-5050}"
 
 export HOST PORT

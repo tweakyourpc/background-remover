@@ -43,6 +43,10 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 Then activate the virtual environment again.
 
+## Network Binding
+
+By default, Background Remover binds to `127.0.0.1` so only the local machine can reach it. Set `HOST=0.0.0.0` only when you intentionally want other devices on your network to connect.
+
 ## Custom Port
 
 ```bash

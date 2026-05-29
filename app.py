@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import base64
 import io
 import json
 import os
 import threading
 import time
 import uuid
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -17,7 +17,7 @@ from rembg import new_session, remove
 from werkzeug.utils import secure_filename
 
 APP_NAME = "Background Remover"
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.3.1"
 DEFAULT_MODEL = os.getenv("BACKGROUND_REMOVER_MODEL", "u2net")
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"}
@@ -62,25 +62,42 @@ def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def serialize_job(job: dict) -> dict:
+    item = dict(job)
+    for key in ("input_path", "output_path"):
+        if isinstance(item.get(key), Path):
+            item[key] = str(item[key])
+    return item
+
+
 def load_jobs() -> list[dict]:
     if not INDEX_FILE.exists():
         return []
     try:
         data = json.loads(INDEX_FILE.read_text(encoding="utf-8"))
         if isinstance(data, list):
-            return data[:JOB_LIMIT]
+            return [serialize_job(job) for job in data[:JOB_LIMIT] if isinstance(job, dict)]
     except json.JSONDecodeError:
         pass
     return []
 
 
 def save_jobs(jobs: list[dict]) -> None:
-    INDEX_FILE.write_text(json.dumps(jobs[:JOB_LIMIT], indent=2) + "\n", encoding="utf-8")
+    serializable_jobs = [serialize_job(job) for job in jobs[:JOB_LIMIT]]
+    INDEX_FILE.write_text(json.dumps(serializable_jobs, indent=2) + "\n", encoding="utf-8")
 
 
 def get_jobs() -> list[dict]:
     with _jobs_lock:
-        return list(_job_cache)
+        return deepcopy(_job_cache)
+
+
+def find_job(job_id: str) -> dict | None:
+    with _jobs_lock:
+        for job in _job_cache:
+            if job.get("job_id") == job_id:
+                return deepcopy(job)
+    return None
 
 
 def record_job(job: dict) -> None:
@@ -110,11 +127,6 @@ def get_session():
         if _rembg_session is None:
             _rembg_session = new_session(DEFAULT_MODEL)
         return _rembg_session
-
-
-def file_to_data_url(image_path: Path) -> str:
-    data = image_path.read_bytes()
-    return "data:image/png;base64," + base64.b64encode(data).decode("utf-8")
 
 
 def process_upload(file_storage, alpha_matting: bool, return_mask: bool, edge_preset: str):
@@ -618,7 +630,6 @@ h1 {
 
 <script>
 let currentFile = null;
-let resultData = null;
 let currentJob = null;
 
 const dropzone = document.getElementById('dropzone');
@@ -680,10 +691,9 @@ async function removeBackground() {
     if (!response.ok || data.error) {
       throw new Error(data.error || response.statusText);
     }
-    resultData = data.image;
     currentJob = data.job;
     const result = document.getElementById('resultPreview');
-    result.src = 'data:image/png;base64,' + data.image;
+    result.src = data.job.result_url;
     result.style.display = 'block';
     document.getElementById('downloadBtn').style.display = 'inline-flex';
     document.getElementById('resultEmpty').style.display = 'none';
@@ -706,7 +716,6 @@ function downloadResult() {
 
 function resetForm() {
   currentFile = null;
-  resultData = null;
   currentJob = null;
   removeBtn.disabled = true;
   document.getElementById('downloadBtn').style.display = 'none';
@@ -762,11 +771,20 @@ def whoami():
             "version": APP_VERSION,
             "pid": os.getpid(),
             "startedAt": isoformat(STARTED_AT),
-            "host": os.getenv("HOST", "0.0.0.0"),
+            "host": os.getenv("HOST", "127.0.0.1"),
             "port": int(os.getenv("PORT", "5050")),
             "model": DEFAULT_MODEL,
         }
     )
+
+
+def job_payload(job: dict) -> dict:
+    payload = serialize_job(job)
+    job_id = payload["job_id"]
+    payload["download_url"] = url_for("download_job", job_id=job_id, _external=False)
+    payload["result_url"] = url_for("result_job", job_id=job_id, _external=False)
+    payload["job_url"] = url_for("job_detail", job_id=job_id, _external=False)
+    return payload
 
 
 @app.route("/api/jobs")
@@ -783,6 +801,7 @@ def api_jobs():
                 "return_mask": job["return_mask"],
                 "status": job["status"],
                 "download_url": url_for("download_job", job_id=job["job_id"], _external=False),
+                "result_url": url_for("result_job", job_id=job["job_id"], _external=False),
                 "job_url": url_for("job_detail", job_id=job["job_id"], _external=False),
             }
         )
@@ -791,20 +810,32 @@ def api_jobs():
 
 @app.route("/jobs/<job_id>")
 def job_detail(job_id: str):
-    for job in get_jobs():
-        if job["job_id"] == job_id:
-            payload = dict(job)
-            payload["download_url"] = url_for("download_job", job_id=job_id, _external=False)
-            return jsonify(payload)
-    return jsonify({"error": "job not found"}), 404
+    job = find_job(job_id)
+    if job is None:
+        return jsonify({"error": "job not found"}), 404
+    return jsonify(job_payload(job))
+
+
+def send_job_file(job_id: str, *, as_attachment: bool):
+    job = find_job(job_id)
+    if job is None:
+        return jsonify({"error": "job not found"}), 404
+
+    output_path = Path(job["output_path"])
+    if not output_path.exists():
+        return jsonify({"error": "output not found"}), 404
+
+    return send_file(output_path, mimetype="image/png", as_attachment=as_attachment, download_name=f"{job_id}.png")
+
+
+@app.route("/result/<job_id>")
+def result_job(job_id: str):
+    return send_job_file(job_id, as_attachment=False)
 
 
 @app.route("/download/<job_id>")
 def download_job(job_id: str):
-    for job in get_jobs():
-        if job["job_id"] == job_id:
-            return send_file(job["output_path"], mimetype="image/png", as_attachment=True, download_name=f"{job_id}.png")
-    return jsonify({"error": "job not found"}), 404
+    return send_job_file(job_id, as_attachment=True)
 
 
 @app.route("/remove", methods=["POST"])
@@ -825,7 +856,6 @@ def remove_background():
     started = time.perf_counter()
     try:
         result = process_upload(file, alpha_matting, return_mask, edge_preset)
-        output_data = result["output_path"].read_bytes()
         job = {
             "job_id": result["job_id"],
             "filename": result["filename"],
@@ -838,23 +868,12 @@ def remove_background():
             "input_path": str(result["input_path"]),
             "output_path": str(result["output_path"]),
             "download_url": url_for("download_job", job_id=result["job_id"], _external=False),
+            "result_url": url_for("result_job", job_id=result["job_id"], _external=False),
             "job_url": url_for("job_detail", job_id=result["job_id"], _external=False),
         }
         record_job(job)
-        return jsonify(
-            {
-                "success": True,
-                "image": base64.b64encode(output_data).decode("utf-8"),
-                "job": job,
-            }
-        )
+        return jsonify({"success": True, "job": job_payload(job)})
     except Exception as exc:
-        try:
-            uploaded = UPLOAD_DIR / secure_filename(file.filename or "")
-            if uploaded.exists():
-                uploaded.unlink()
-        except OSError:
-            pass
         failed_job = {
             "job_id": uuid.uuid4().hex,
             "filename": secure_filename(file.filename),
@@ -873,7 +892,7 @@ def main() -> None:
     ensure_dirs()
     cleanup_uploads()
     _job_cache[:] = load_jobs()
-    host = os.getenv("HOST", "0.0.0.0")
+    host = os.getenv("HOST", "127.0.0.1")
     port = int(os.getenv("PORT", "5050"))
     app.run(host=host, port=port, debug=False)
 

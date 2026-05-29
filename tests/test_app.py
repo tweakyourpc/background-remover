@@ -61,7 +61,39 @@ class BackgroundEraserAppTest(unittest.TestCase):
         data = response.get_json()
         self.assertTrue(data["success"])
         self.assertIn("job", data)
-        self.assertGreater(len(data["image"]), 0)
+        self.assertIn("result_url", data["job"])
+        self.assertIn("download_url", data["job"])
+        self.assertNotIn("image", data)
+
+        result_response = client.get(data["job"]["result_url"])
+        self.assertEqual(result_response.status_code, 200)
+        self.assertEqual(result_response.mimetype, "image/png")
+        result_response.close()
+
+    def test_download_works_for_persisted_string_path(self):
+        background_eraser.ensure_dirs()
+        output_path = background_eraser.OUTPUT_DIR / "persisted-test.png"
+        Image.new("RGBA", (4, 4), (0, 255, 0, 255)).save(output_path, format="PNG")
+        background_eraser._job_cache[:] = [
+            {
+                "job_id": "persisted-test",
+                "filename": "persisted.png",
+                "created_at": background_eraser.isoformat(),
+                "duration_ms": 1,
+                "alpha_matting": False,
+                "return_mask": False,
+                "edge_preset": "balanced",
+                "status": "ok",
+                "input_path": "",
+                "output_path": str(output_path),
+            }
+        ]
+
+        client = background_eraser.app.test_client()
+        response = client.get("/download/persisted-test")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "image/png")
+        response.close()
 
 
 if __name__ == "__main__":
