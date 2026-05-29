@@ -1,0 +1,22 @@
+{
+  "name": "Background Remover",
+  "slug": "background-remover",
+  "track": "product",
+  "status": "active",
+  "goal": "Build a portable Background Remover app for Windows, macOS, and Linux with clear dependencies, deterministic launch behavior, and a clean GitHub-ready presentation.",
+  "createdAt": "2026-05-11T00:00:00Z",
+  "updatedAt": "2026-05-11T00:00:00Z",
+  "owner": "project-maintainer",
+  "promotionCriteria": [
+    "Has deterministic entrypoint.",
+    "Has docs and operating notes.",
+    "Has tests or a repeatable verification script.",
+    "Has a clear install story for Windows, macOS, and Linux.",
+    "Has a change record before persistent system changes."
+  ],
+  "nextActions": [
+    "Add branding assets and a marketing graphic.",
+    "Add packaging or release metadata for GitHub distribution.",
+    "Verify install and launch instructions on each supported platform."
+  ]
+}
