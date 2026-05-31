@@ -1,6 +1,6 @@
 # Background Remover
 
-![Background Remover hero](assets/hero.png)
+![Background Remover hero](https://raw.githubusercontent.com/tweakyourpc/background-remover/main/assets/hero.png)
 
 A small local utility for removing image backgrounds and exporting transparent PNGs. It runs as a lightweight Flask app and uses `rembg` with ONNX Runtime for the actual segmentation work.
 
