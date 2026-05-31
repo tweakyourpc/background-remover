@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "background-remover"
+name = "bgvanish"
 version = "0.4.0"
 description = "Remove image backgrounds locally - no uploads, no account, no fees"
 readme = {file = "README.md", content-type = "text/markdown"}
