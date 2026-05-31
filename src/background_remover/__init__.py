@@ -17,7 +17,7 @@ from rembg import new_session, remove
 from werkzeug.utils import secure_filename
 
 APP_NAME = "Background Remover"
-APP_VERSION = "0.3.1"
+APP_VERSION = "0.4.0"
 DEFAULT_MODEL = os.getenv("BACKGROUND_REMOVER_MODEL", "u2net")
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"}
@@ -29,7 +29,7 @@ EDGE_PRESETS = {
     "crisp": (18, 18),
 }
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(os.getenv("BACKGROUND_REMOVER_HOME", Path.cwd())).resolve()
 DATA_DIR = ROOT / "data"
 UPLOAD_DIR = ROOT / "uploads"
 OUTPUT_DIR = ROOT / "outputs"
@@ -38,6 +38,7 @@ INDEX_FILE = DATA_DIR / "jobs.json"
 STARTED_AT = datetime.now(timezone.utc)
 _session_lock = threading.Lock()
 _rembg_session = None
+_model_notice_printed = False
 _jobs_lock = threading.Lock()
 _job_cache: list[dict] = []
 
@@ -121,10 +122,26 @@ def resolve_edge_sizes(preset: str) -> tuple[int, int]:
     return EDGE_PRESETS.get(preset, EDGE_PRESETS["balanced"])
 
 
+def u2net_model_cached() -> bool:
+    if DEFAULT_MODEL != "u2net":
+        return True
+    model_home = Path(os.getenv("U2NET_HOME", Path(os.getenv("XDG_DATA_HOME", "~")) / ".u2net")).expanduser()
+    return (model_home / "u2net.onnx").exists()
+
+
+def maybe_print_first_run_model_notice() -> None:
+    global _model_notice_printed
+    if _model_notice_printed or u2net_model_cached():
+        return
+    print("Downloading u2net model on first run (~170MB) - this happens once.", flush=True)
+    _model_notice_printed = True
+
+
 def get_session():
     global _rembg_session
     with _session_lock:
         if _rembg_session is None:
+            maybe_print_first_run_model_notice()
             _rembg_session = new_session(DEFAULT_MODEL)
         return _rembg_session
 
@@ -889,6 +906,7 @@ def remove_background():
 
 
 def main() -> None:
+    maybe_print_first_run_model_notice()
     ensure_dirs()
     cleanup_uploads()
     _job_cache[:] = load_jobs()

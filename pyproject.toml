@@ -4,9 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "background-remover"
-version = "0.3.1"
-description = "Portable background remover app"
-readme = "README.md"
+version = "0.4.0"
+description = "Remove image backgrounds locally - no uploads, no account, no fees"
+readme = {file = "README.md", content-type = "text/markdown"}
+authors = [{name = "Chris Davis"}]
 requires-python = ">=3.10"
 dependencies = [
   "Flask>=3.0,<4",
@@ -16,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-background-remover = "app:main"
+background-remover = "background_remover:main"
 
-[tool.setuptools]
-py-modules = ["app"]
+[tool.setuptools.packages.find]
+where = ["src"]

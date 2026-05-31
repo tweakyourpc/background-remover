@@ -14,4 +14,5 @@ HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-5050}"
 
 export HOST PORT
-exec "$VENV/bin/python" "$ROOT/app.py"
+export PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
+exec "$VENV/bin/python" -m background_remover

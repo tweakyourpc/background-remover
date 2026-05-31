@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from PIL import Image
 
-import app as background_eraser
+import background_remover as background_eraser
 
 
 class BackgroundEraserAppTest(unittest.TestCase):
