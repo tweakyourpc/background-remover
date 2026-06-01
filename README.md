@@ -67,7 +67,7 @@ The Python package installs:
 
 `rembg` fetches model assets on first use. The default model is `u2net`; override it with `BACKGROUND_REMOVER_MODEL` if you want to use another model supported by `rembg`.
 
-See [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md) for platform notes and troubleshooting.
+See [docs/DEPENDENCIES.md](https://github.com/tweakyourpc/background-remover/blob/main/docs/DEPENDENCIES.md) for platform notes and troubleshooting.
 
 ## Configuration
 
@@ -104,4 +104,4 @@ This is intentionally small: one loopback-only local web app by default, local f
 
 ## License
 
-MIT License. See [LICENSE](LICENSE).
+MIT License. See [LICENSE](https://github.com/tweakyourpc/background-remover/blob/main/LICENSE).
