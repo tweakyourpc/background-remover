@@ -1,0 +1,13 @@
+services:
+  background-remover:
+    build: .
+    ports:
+      - "5050:5050"
+    volumes:
+      - ./outputs:/app/outputs
+      - ./uploads:/app/uploads
+    environment:
+      - HOST=0.0.0.0
+      - PORT=5050
+      - BACKGROUND_REMOVER_MODEL=u2net
+    restart: unless-stopped

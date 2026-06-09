@@ -36,6 +36,21 @@ background-remover
 
 Open `http://localhost:5050` in your browser.
 
+## Docker
+
+Requires Docker Desktop (Mac/Windows) or Docker Engine (Linux). Install from https://docs.docker.com/get-docker/ before running these commands.
+
+**Using Docker Compose (recommended):**
+
+```bash
+git clone https://github.com/tweakyourpc/background-remover && cd background-remover
+docker compose up -d
+```
+
+Open http://localhost:5050. Processed files are stored in `./outputs` and persist across restarts.
+
+See [docs/docker.md](docs/docker.md) for ports, model selection, and platform notes.
+
 ## Manual Install
 
 ```bash
